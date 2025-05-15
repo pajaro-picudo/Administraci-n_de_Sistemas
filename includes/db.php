@@ -2,83 +2,123 @@
 // /var/www/bioinformatica/public_html/includes/db.php
 
 /**
- * Configuración de la base de datos para el proyecto de Bioinformática
- * 
- * Este archivo contiene las credenciales de conexión a la base de datos
- * y funciones para manejar conexiones PDO de forma segura.
+ * Configuración optimizada de la base de datos
+ * Versión mejorada para resolver el error 500
  */
 
-// Definición de constantes para la conexión
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'bioinformatica');
-define('DB_USER', 'admin_usal');
-define('DB_PASS', '458907');
-define('DB_CHARSET', 'utf8mb4');
+// 1. Verificación inicial del entorno
+if (!defined('DB_ENV_VERIFIED')) {
+    // Validación de credenciales antes de definir constantes
+    $required_constants = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASS'];
+    foreach ($required_constants as $constant) {
+        if (!isset($$constant) && !getenv($constant)) {
+            die("Configuración de BD incompleta: Falta $constant");
+        }
+    }
 
-/**
- * Establece y devuelve una conexión PDO a la base de datos
- * 
- * @return PDO Objeto de conexión a la base de datos
- * @throws PDOException Si ocurre un error al conectar
- */
-function getDBConnection() {
-    static $conn = null;
-    
-    if ($conn === null) {
+    // Definición segura de constantes
+    define('DB_HOST', 'localhost');
+    define('DB_NAME', 'bioinformatica');
+    define('DB_USER', 'admin_usal');
+    define('DB_PASS', '458907');
+    define('DB_CHARSET', 'utf8mb4');
+    define('DB_PORT', '3306');
+    define('DB_TIMEOUT', 15); // Aumentado a 15 segundos
+    define('DB_ENV_VERIFIED', true);
+}
+
+class Database {
+    private static $instance = null;
+    private $connection;
+
+    private function __construct() {
         try {
-            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+            $dsn = sprintf(
+                "mysql:host=%s;port=%s;dbname=%s;charset=%s",
+                DB_HOST,
+                DB_PORT,
+                DB_NAME,
+                DB_CHARSET
+            );
+
             $options = [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,
                 PDO::ATTR_PERSISTENT         => false,
+                PDO::ATTR_TIMEOUT            => DB_TIMEOUT,
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4"
             ];
-            
-            $conn = new PDO($dsn, DB_USER, DB_PASS, $options);
-            
-            // Configuración adicional para asegurar conexión segura
-            $conn->exec("SET time_zone = '+00:00';");
-            $conn->exec("SET SQL_MODE = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';");
-            
+
+            $this->connection = new PDO($dsn, DB_USER, DB_PASS, $options);
+
+            // Configuración adicional crítica
+            $this->connection->exec("SET time_zone = '+00:00';");
+            $this->connection->exec("SET SQL_MODE = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
+
         } catch (PDOException $e) {
-            // Registrar el error de forma segura sin exponer detalles sensibles
-            error_log("[" . date('Y-m-d H:i:s') . "] Error de conexión a BD: " . $e->getMessage());
-            throw new PDOException("Error al conectar con la base de datos. Por favor, inténtelo más tarde.");
+            error_log("[".date('Y-m-d H:i:s')."] CRITICAL DB: ".$e->getMessage());
+            throw new RuntimeException("Service unavailable", 503);
         }
     }
-    
-    return $conn;
+
+    public static function getInstance() {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    public function getConnection() {
+        // Verificación de conexión activa
+        try {
+            $this->connection->query("SELECT 1")->fetch();
+        } catch (PDOException $e) {
+            $this->__construct(); // Reconexión automática
+        }
+        return $this->connection;
+    }
 }
 
-/**
- * Función para ejecutar consultas preparadas de forma segura
- * 
- * @param string $sql Consulta SQL con parámetros preparados
- * @param array $params Parámetros para la consulta
- * @return PDOStatement Resultado de la ejecución
- */
+// Funciones de compatibilidad (mejoradas)
+function getDBConnection() {
+    try {
+        return Database::getInstance()->getConnection();
+    } catch (RuntimeException $e) {
+        http_response_code(503);
+        die("Servicio no disponible. Por favor, intente más tarde.");
+    }
+}
+
 function executeQuery($sql, $params = []) {
     $conn = getDBConnection();
-    $stmt = $conn->prepare($sql);
     
-    if ($stmt === false) {
-        error_log("Error al preparar consulta: " . implode(" ", $conn->errorInfo()));
-        throw new PDOException("Error al preparar la consulta SQL");
+    try {
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false) {
+            throw new RuntimeException("Error en preparación de consulta");
+        }
+        
+        $stmt->execute($params);
+        return $stmt;
+        
+    } catch (PDOException $e) {
+        error_log(sprintf(
+            "[%s] SQL ERROR: %s\nQuery: %s\nParams: %s",
+            date('Y-m-d H:i:s'),
+            $e->getMessage(),
+            $sql,
+            json_encode($params)
+        );
+        throw new RuntimeException("Error en operación de base de datos");
     }
-    
-    if ($stmt->execute($params) === false) {
-        error_log("Error al ejecutar consulta: " . implode(" ", $stmt->errorInfo()));
-        throw new PDOException("Error al ejecutar la consulta SQL");
-    }
-    
-    return $stmt;
 }
 
-// Función para verificar que la conexión es correcta al incluir el archivo
+// Prueba de conexión silenciosa al incluir el archivo
 try {
     getDBConnection();
-} catch (PDOException $e) {
-    // En entorno de producción, esto debería ir a un log y mostrar un mensaje genérico
-    die("Error crítico: No se pudo establecer conexión con la base de datos. Contacte al administrador.");
+} catch (Exception $e) {
+    error_log("Fallo inicial de conexión: ".$e->getMessage());
+    // No mostrar detalles al usuario en producción
 }
 ?>
