@@ -66,10 +66,20 @@ if (isset($_SESSION['user_id'])) {
             <div class="error">
                 <?php
                 switch($_GET['error']) {
-                    case 'credenciales': echo "Usuario o contraseña incorrectos"; break;
-                    case 'bd': echo "Error en el sistema. Intente más tarde"; break;
-                    case 'session': echo "Debe iniciar sesión para continuar"; break;
-                    default: echo "Error desconocido";
+                    case 'credenciales': 
+                        echo "Usuario o contraseña incorrectos"; 
+                        break;
+                    case 'bd': 
+                        echo "Error en el sistema. Intente más tarde"; 
+                        break;
+                    case 'session': 
+                        echo "Debe iniciar sesión para continuar"; 
+                        break;
+                    case 'cuenta_no_confirmada':
+                        echo "Debe confirmar su cuenta por correo antes de iniciar sesión.";
+                        break;
+                    default: 
+                        echo "Error desconocido";
                 }
                 ?>
             </div>
@@ -86,6 +96,11 @@ if (isset($_SESSION['user_id'])) {
             </div>
             <button type="submit" class="btn">Entrar</button>
         </form>
+        <div style="margin-top: 15px; text-align: center;">
+            <a href="/index.php" style="text-decoration: none; color: #2c3e50;">
+                ← Volver a la pantalla principal
+            </a>
+        </div>
     </div>
 </body>
 </html>

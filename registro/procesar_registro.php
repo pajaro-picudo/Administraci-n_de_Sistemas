@@ -37,10 +37,13 @@ try {
     // Hash de la contraseña
     $password_hash = password_hash($password, PASSWORD_DEFAULT);
 
-    // Insertar usuario en la base de datos
+    // Generar token único de confirmación
+    $confirm_token = bin2hex(random_bytes(32)); // 64 caracteres aleatorios
+
+    // Insertar usuario en la base de datos (cuenta no confirmada)
     $stmt = $conn->prepare("INSERT INTO usuarios 
-        (username, password_hash, tipo, nombre, apellidos, email, direccion) 
-        VALUES (:username, :password_hash, :tipo, :nombre, :apellidos, :email, :direccion)");
+        (username, password_hash, tipo, nombre, apellidos, email, direccion, cuenta_confirmada, confirm_token) 
+        VALUES (:username, :password_hash, :tipo, :nombre, :apellidos, :email, :direccion, 0, :confirm_token)");
 
     $stmt->bindParam(':username', $username);
     $stmt->bindParam(':password_hash', $password_hash);
@@ -49,8 +52,10 @@ try {
     $stmt->bindParam(':apellidos', $apellidos);
     $stmt->bindParam(':email', $email);
     $stmt->bindParam(':direccion', $direccion);
+    $stmt->bindParam(':confirm_token', $confirm_token);
 
     $stmt->execute();
+
     // Crear directorio personal para el usuario
     $user_dir = "/home/{$username}/public_html";
     if (!file_exists($user_dir)) {
@@ -89,17 +94,18 @@ HTML;
 
     file_put_contents("{$user_dir}/index.html", $index_content);
 
-    // Enviar correo de confirmación (simulado)
-    $to = $email;
-    $subject = "Confirmación de registro - Departamento de Bioinformática";
+    // Enviar correo con enlace de confirmación
+    $activation_link = "http://tuservidor.usal.es/usuarios/confirmar_cuenta.php?token={$confirm_token}";
+    $subject = "Confirma tu registro - Departamento de Bioinformática";
     $message = "Hola {$nombre},\n\nGracias por registrarte en nuestro sistema.\n\n";
-    $message .= "Tus datos de acceso son:\n";
-    $message .= "Usuario: {$username}\n";
-    $message .= "Puedes acceder a tu espacio personal en: http://tuservidor.usal.es/~{$username}\n\n";
+    $message .= "Para activar tu cuenta, haz clic en el siguiente enlace:\n";
+    $message .= "{$activation_link}\n\n";
+    $message .= "Si no solicitaste este registro, puedes ignorar este mensaje.\n\n";
     $message .= "Saludos,\nEl equipo de Bioinformática";
-    
-    // En producción usarías mail() o una librería como PHPMailer
-    // mail($to, $subject, $message);
+
+    // Puedes sustituir esto por PHPMailer si estás en producción
+    mail($email, $subject, $message);
+
     // Redirigir a página de éxito
     header('Location: /registro/registro_exitoso.html');
     exit;
