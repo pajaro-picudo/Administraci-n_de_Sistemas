@@ -43,7 +43,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         // Generar token de confirmación
         $confirm_token = bin2hex(random_bytes(32));
 
-        // Insertar nuevo usuario
+        // Insertar nuevo usuario en la base de datos
         $stmt = $conn->prepare("INSERT INTO usuarios 
             (username, password_hash, tipo, nombre, apellidos, email, direccion, confirm_token) 
             VALUES (:username, :password_hash, :tipo, :nombre, :apellidos, :email, :direccion, :confirm_token)");
@@ -68,7 +68,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $mail->Host = 'smtp.gmail.com';
         $mail->SMTPAuth = true;
         $mail->Username = 'alorenzojerez@gmail.com';       // Tu cuenta real
-        $mail->Password = 'etst ogow tcmi gwcm';          // Tu app password (asegúrate de que sea válida)
+        $mail->Password = 'etst ogow tcmi gwcm';           // Tu app password
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port = 587;
 
@@ -85,6 +85,22 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         ";
 
         $mail->send();
+
+        // === AÑADIR A LA COLA DE ALTA DE USUARIOS ===
+        $grupo = ($tipo === 'investigador') ? 'investigadores' : 'estudiantes';
+
+        $datos_alta = [
+            'usuario'    => $username,
+            'nombre'     => $nombre,
+            'contrasena' => $password,
+            'grupo'      => $grupo
+        ];
+
+        $archivo_cola = '/var/cola_usuarios/alta_usuarios.queue';
+        $entrada_json = json_encode($datos_alta) . "\n";
+
+        file_put_contents($archivo_cola, $entrada_json, FILE_APPEND | LOCK_EX);
+        // =============================================
 
         header("Location: registro_exitoso.html");
         exit;
