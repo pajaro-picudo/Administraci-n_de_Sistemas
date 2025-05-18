@@ -6,6 +6,7 @@ use JSON;
 use File::Copy qw(copy);
 use POSIX qw(getpwnam getgrnam);
 
+# Rutas de archivos y directorios
 my $cola = '/var/cola_usuarios/alta_usuarios.queue';
 my $base_web = '/var/www/bioinformatica/public_html/usuarios';
 my $instrucciones_txt = '/etc/skel/instrucciones.txt';
@@ -20,34 +21,61 @@ while (1) {
         foreach my $linea (@lineas) {
             chomp $linea;
             my $solicitud = eval { decode_json($linea) };
-            next unless $solicitud;
+            unless ($solicitud) {
+                warn "Error al decodificar JSON: $@\n";
+                next;
+            }
 
             my $usuario    = $solicitud->{usuario};
             my $nombre     = $solicitud->{nombre};
             my $contrasena = $solicitud->{contrasena};
             my $grupo      = $solicitud->{grupo} || 'usuarios';
 
-            system("useradd -m -s /bin/bash -g $grupo $usuario");
-            open(my $pw, '|-', 'chpasswd') or die "No se pudo abrir chpasswd: $!";
+            # Crear usuario con home y bash
+            my $exit = system("useradd", "-m", "-s", "/bin/bash", "-g", $grupo, $usuario);
+            if ($exit != 0) {
+                warn "Error al crear el usuario $usuario con useradd\n";
+                next;
+            }
+
+            # Asignar contraseña
+            open(my $pw, '|-', 'chpasswd') or do {
+                warn "No se pudo abrir chpasswd para $usuario\n";
+                next;
+            };
             print $pw "$usuario:$contrasena\n";
             close($pw);
 
-            copy($instrucciones_txt, "/home/$usuario/instrucciones.txt");
+            # Copiar instrucciones al home del usuario
+            my $home_dir = "/home/$usuario";
+            if (-e $instrucciones_txt) {
+                copy($instrucciones_txt, "$home_dir/instrucciones.txt") or warn "Error copiando instrucciones.txt\n";
+            }
 
-            mkdir("$base_web/$usuario", 0755);
-            copy($plantilla_html, "$base_web/$usuario/index.html");
+            # Crear directorio web del usuario
+            my $web_dir = "$base_web/$usuario";
+            mkdir($web_dir, 0755) unless -d $web_dir;
+            if (-e $plantilla_html) {
+                copy($plantilla_html, "$web_dir/index.html") or warn "Error copiando index.html\n";
+            }
 
+            # Establecer propietario correcto
             my $uid = getpwnam($usuario);
             my $gid = getgrnam($grupo);
-            chown($uid, $gid, "$base_web/$usuario/index.html");
+            if (defined $uid && defined $gid) {
+                chown($uid, $gid, "$web_dir");
+                chown($uid, $gid, "$web_dir/index.html") if -e "$web_dir/index.html";
+                chown($uid, $gid, "$home_dir/instrucciones.txt") if -e "$home_dir/instrucciones.txt";
+            }
 
-            system("setquota -u $usuario 100000 150000 0 0 -a /");
+            # Establecer cuota
+            system("setquota", "-u", $usuario, "100000", "150000", "0", "0", "-a", "/");
         }
 
-        # Limpia la cola
-        open(my $fh_clear, '>', $cola);
+        # Vaciar la cola
+        open(my $fh_clear, '>', $cola) or warn "No se pudo vaciar la cola\n";
         close($fh_clear);
     }
 
-    sleep(10);  # Esperar 10 segundos antes de revisar otra vez
+    sleep(10);  # Revisa cada 10 segundos
 }

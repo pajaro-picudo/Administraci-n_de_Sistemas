@@ -4,7 +4,7 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/../includes/db.php';
-require_once __DIR__ . '/../vendor/autoload.php'; // Ruta a Composer autoload
+require_once __DIR__ . '/../vendor/autoload.php'; // Autoload de Composer
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -13,17 +13,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     try {
         $conn = getDBConnection();
 
-        $username = trim($_POST['username']);
-        $password = $_POST['password'];
-        $tipo = $_POST['tipo'];
-        $nombre = $_POST['nombre'];
-        $apellidos = $_POST['apellidos'];
-        $email = $_POST['email'];
-        $direccion = $_POST['direccion'];
+        // Recoger y sanitizar datos del formulario
+        $username  = trim($_POST['username']);
+        $password  = $_POST['password'];
+        $tipo      = $_POST['tipo'];
+        $nombre    = trim($_POST['nombre']);
+        $apellidos = trim($_POST['apellidos']);
+        $email     = trim($_POST['email']);
+        $direccion = trim($_POST['direccion']);
 
-        // Validación básica
+        // Validaciones básicas
         if (empty($username) || empty($password) || empty($email)) {
             throw new Exception("Faltan datos obligatorios");
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new Exception("Correo electrónico no válido");
+        }
+
+        if (!in_array($tipo, ['estudiante', 'investigador'])) {
+            throw new Exception("Tipo de usuario inválido");
         }
 
         // Verificar si el usuario ya existe
@@ -37,13 +46,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             exit;
         }
 
-        // Hash de la contraseña
+        // Hash de contraseña y token de confirmación
         $password_hash = password_hash($password, PASSWORD_DEFAULT);
-
-        // Generar token de confirmación
         $confirm_token = bin2hex(random_bytes(32));
 
-        // Insertar nuevo usuario en la base de datos
+        // Insertar usuario en base de datos
         $stmt = $conn->prepare("INSERT INTO usuarios 
             (username, password_hash, tipo, nombre, apellidos, email, direccion, confirm_token) 
             VALUES (:username, :password_hash, :tipo, :nombre, :apellidos, :email, :direccion, :confirm_token)");
@@ -58,11 +65,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $stmt->bindParam(':confirm_token', $confirm_token);
         $stmt->execute();
 
-        // Construir enlace de confirmación dinámicamente
+        // Enlace de confirmación
         $host = $_SERVER['HTTP_HOST'];
         $enlace = "http://$host/confirmar.php?token={$confirm_token}";
 
-        // Enviar correo de confirmación
+        // Envío de correo
         $mail = new PHPMailer(true);
         $mail->isSMTP();
         $mail->Host = 'smtp.gmail.com';
@@ -73,13 +80,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $mail->Port = 587;
 
         $mail->setFrom('alorenzojerez@gmail.com', 'Departamento de Bioinformática');
-        $mail->addAddress($email, $nombre . ' ' . $apellidos);
+        $mail->addAddress($email, "$nombre $apellidos");
 
         $mail->isHTML(true);
         $mail->Subject = 'Confirma tu cuenta';
         $mail->Body = "
             <p>Hola <strong>{$nombre}</strong>,</p>
-            <p>Gracias por registrarte. Para activar tu cuenta, por favor haz clic en el siguiente enlace:</p>
+            <p>Gracias por registrarte. Para activar tu cuenta, haz clic en el siguiente enlace:</p>
             <p><a href='{$enlace}'>Confirmar cuenta</a></p>
             <p>Si no solicitaste esta cuenta, ignora este mensaje.</p>
         ";
@@ -97,10 +104,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         ];
 
         $archivo_cola = '/var/cola_usuarios/alta_usuarios.queue';
-        $entrada_json = json_encode($datos_alta) . "\n";
+        $entrada_json = json_encode($datos_alta, JSON_UNESCAPED_UNICODE) . "\n";
 
-        file_put_contents($archivo_cola, $entrada_json, FILE_APPEND | LOCK_EX);
-        // =============================================
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception("Error al codificar JSON para la cola: " . json_last_error_msg());
+        }
+
+        // Comprobar que el archivo o su directorio son escribibles
+        if (!file_exists(dirname($archivo_cola))) {
+            throw new Exception("Directorio de cola no encontrado: " . dirname($archivo_cola));
+        }
+
+        if (!is_writable($archivo_cola)) {
+            throw new Exception("No se puede escribir en la cola: $archivo_cola");
+        }
+
+        if (file_put_contents($archivo_cola, $entrada_json, FILE_APPEND | LOCK_EX) === false) {
+            throw new Exception("Fallo al escribir en la cola de usuarios");
+        }
+        // ====================================================
 
         header("Location: registro_exitoso.html");
         exit;

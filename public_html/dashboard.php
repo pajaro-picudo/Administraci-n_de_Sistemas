@@ -137,7 +137,7 @@ $is_researcher = ($_SESSION['user_type'] === 'investigador');
             <h1>Panel de Usuario</h1>
             <div class="user-info">
                 <div class="user-avatar">
-                    <?= strtoupper(substr($_SESSION['username'], 0, 1)) ?>
+                    <?= strtoupper(substr(htmlspecialchars($_SESSION['username']), 0, 1)) ?>
                 </div>
                 <span><?= htmlspecialchars($_SESSION['username']) ?></span>
                 <?php if ($is_researcher): ?>
@@ -168,7 +168,7 @@ $is_researcher = ($_SESSION['user_type'] === 'investigador');
                 <div class="service-card">
                     <h3><i class="service-icon fas fa-globe"></i> Espacio Web</h3>
                     <p>Gestiona tu sitio web personal y blog académico.</p>
-                    <a href="/~<?= $_SESSION['username'] ?>" class="logout-btn">Acceder</a>
+                    <a href="./usuarios/<?= htmlspecialchars($_SESSION['username']) ?>" class="logout-btn">Acceder</a>
                 </div>
 
                 <div class="service-card">
@@ -189,8 +189,6 @@ $is_researcher = ($_SESSION['user_type'] === 'investigador');
                     <a href="/perfil" class="logout-btn">Editar</a>
                     <a href="/usuarios/cambiar_password.php" class="logout-btn" style="background: var(--warning-color);">Cambiar contraseña</a>
                     <a href="/usuarios/confirmar_borrado.php" class="logout-btn" style="background: #e74c3c;">Eliminar cuenta</a>
-
-                    </a>
                 </div>
 
             </div>
