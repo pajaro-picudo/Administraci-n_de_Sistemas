@@ -38,6 +38,26 @@ while (1) {
                 next;
             }
 
+            # Crear Maildir con Dovecot
+            system("runuser", "-l", $usuario, "-c", "maildirmake.dovecot ~/Maildir");
+
+            # Corregir propietario y permisos de Maildir recursivamente
+            my $home_dir = "/home/$usuario";
+            my $maildir = "$home_dir/Maildir";
+
+            if (-d $maildir) {
+                my $uid = getpwnam($usuario);
+                my $gid = getgrnam($grupo);
+                if (defined $uid && defined $gid) {
+                    system("chown", "-R", "$uid:$gid", $maildir);
+                    system("chmod", "-R", "700", $maildir);
+                } else {
+                    warn "No se pudo obtener UID o GID para $usuario o $grupo\n";
+                }
+            } else {
+                warn "Maildir no existe para $usuario\n";
+            }
+
             # Asignar contraseña
             open(my $pw, '|-', 'chpasswd') or do {
                 warn "No se pudo abrir chpasswd para $usuario\n";
@@ -47,7 +67,6 @@ while (1) {
             close($pw);
 
             # Copiar instrucciones al home del usuario
-            my $home_dir = "/home/$usuario";
             if (-e $instrucciones_txt) {
                 copy($instrucciones_txt, "$home_dir/instrucciones.txt") or warn "Error copiando instrucciones.txt\n";
             }
@@ -59,7 +78,7 @@ while (1) {
                 copy($plantilla_html, "$web_dir/index.html") or warn "Error copiando index.html\n";
             }
 
-            # Establecer propietario correcto
+            # Establecer propietario correcto del directorio web y otros ficheros
             my $uid = getpwnam($usuario);
             my $gid = getgrnam($grupo);
             if (defined $uid && defined $gid) {

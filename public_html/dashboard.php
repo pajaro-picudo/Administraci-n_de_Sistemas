@@ -185,10 +185,8 @@ $is_researcher = ($_SESSION['user_type'] === 'investigador');
 
                 <div class="service-card">
                     <h3><i class="service-icon fas fa-user-cog"></i> Mi Perfil</h3>
-                    <p>Actualiza tus datos personales y contraseña.</p>
-                    <a href="/perfil" class="logout-btn">Editar</a>
-                    <a href="/usuarios/cambiar_password.php" class="logout-btn" style="background: var(--warning-color);">Cambiar contraseña</a>
-                    <a href="/usuarios/confirmar_borrado.php" class="logout-btn" style="background: #e74c3c;">Eliminar cuenta</a>
+                    <p>Gestiona la configuración de tu cuenta y privacidad.</p>
+                    <a href="opciones.php" class="logout-btn">Opciones</a>
                 </div>
 
             </div>

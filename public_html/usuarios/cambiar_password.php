@@ -10,7 +10,6 @@ if (!isset($_SESSION['user_id'])) {
 $mensaje = '';
 $tipo_mensaje = 'error';
 
-// Si se envía el formulario (POST), procesar cambio de contraseña
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $current_password = $_POST['current_password'] ?? '';
     $new_password = $_POST['new_password'] ?? '';
@@ -39,7 +38,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bindParam(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
                 $stmt->execute();
 
-                // Redirigir a index.php tras el cambio exitoso
                 header("Location: /index.php?mensaje=contraseña_actualizada");
                 exit;
             }
@@ -57,32 +55,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <title>Cambiar contraseña</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 30px; }
-        form { background: white; padding: 20px; max-width: 400px; margin: auto; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 30px;
+        }
+        form {
+            background: white;
+            padding: 25px;
+            max-width: 420px;
+            margin: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+        }
         input[type="password"], button {
             width: 100%;
             padding: 10px;
-            margin: 10px 0;
+            margin: 10px 0 15px;
             box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
         }
         button {
             background: #3498db;
             color: white;
             border: none;
-            border-radius: 4px;
+            font-size: 1em;
             cursor: pointer;
+            transition: background 0.3s ease;
         }
         button:hover {
             background: #2980b9;
         }
+        .volver {
+            background: #2c3e50;
+        }
+        .volver:hover {
+            background: #1a252f;
+        }
         .mensaje {
             text-align: center;
             padding: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             border-radius: 5px;
         }
-        .error { background-color: #f8d7da; color: #721c24; }
-        .exito { background-color: #d4edda; color: #155724; }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .exito {
+            background-color: #d4edda;
+            color: #155724;
+        }
     </style>
 </head>
 <body>
@@ -97,7 +125,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <input type="password" name="current_password" placeholder="Contraseña actual" required>
     <input type="password" name="new_password" placeholder="Nueva contraseña" required>
     <input type="password" name="confirm_password" placeholder="Confirmar nueva contraseña" required>
+    
     <button type="submit">Actualizar contraseña</button>
+    <button type="button" class="volver" onclick="window.location.href='../opciones.php'">Volver</button>
 </form>
 
 </body>
