@@ -127,7 +127,7 @@ if (!isset($_SESSION['user_id'])) {
     <script>
         function confirmarEliminacion() {
             if (confirm("¿Estás seguro de que deseas eliminar tu cuenta? Esta acción no se puede deshacer.")) {
-                window.location.href = "./usuarios/borrar_cuenta.php";
+                window.location.href = "./gestion_usuarios/borrar_cuenta.php";
             }
         }
     </script>
@@ -148,7 +148,7 @@ if (!isset($_SESSION['user_id'])) {
             <h2><i class="fas fa-user-cog"></i> Ajustes disponibles</h2>
             <p>Desde aquí puedes cambiar tu contraseña o eliminar tu cuenta de forma permanente.</p>
             <div class="button-container">
-                <a href="./usuarios/cambiar_password.php" class="logout-btn warning"><i class="fas fa-key"></i> Cambiar contraseña</a>
+                <a href="./gestion_usuarios/cambiar_password.php" class="logout-btn warning"><i class="fas fa-key"></i> Cambiar contraseña</a>
                 <button onclick="confirmarEliminacion()" class="logout-btn danger"><i class="fas fa-user-times"></i> Eliminar cuenta</button>
             </div>
             <div class="back-btn-container">

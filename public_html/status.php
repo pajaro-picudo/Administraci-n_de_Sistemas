@@ -117,7 +117,7 @@
                 'Apache' => 'apache2',
                 'MySQL' => 'mysql',
                 'Correo (Postfix)' => 'postfix',
-                'Webmail (Roundcube)' => 'roundcube', // Ejemplo ficticio
+                'Webmail (Roundcube)' => 'roundcube', 
                 'SFTP' => 'ssh'
             ];
 

@@ -173,8 +173,8 @@ $is_researcher = ($_SESSION['user_type'] === 'investigador');
 
                 <div class="service-card">
                     <h3><i class="service-icon fas fa-envelope"></i> Correo Institucional</h3>
-                    <p>Accede a tu cuenta de correo @bioinformatica.usal.es</p>
-                    <a href="/webmail" class="logout-btn">Webmail</a>
+                    <p>Accede a tu cuenta de correo @bioinformatica.es</p>
+                    <a href="http://localhost:8080/roundcube" class="logout-btn">Webmail</a>
                 </div>
 
                 <div class="service-card">
@@ -192,24 +192,7 @@ $is_researcher = ($_SESSION['user_type'] === 'investigador');
             </div>
         </section>
 
-        <?php if ($is_researcher): ?>
-        <section class="research-section">
-            <h2><i class="fas fa-flask"></i> Herramientas de Investigación</h2>
-            <div class="services-grid">
-                <div class="service-card">
-                    <h3><i class="service-icon fas fa-chart-line"></i> Análisis de Datos</h3>
-                    <p>Accede a nuestras herramientas avanzadas de análisis.</p>
-                    <a href="/tools" class="logout-btn">Utilizar</a>
-                </div>
-                <div class="service-card">
-                    <h3><i class="service-icon fas fa-users"></i> Colaboradores</h3>
-                    <p>Gestiona tu equipo de investigación.</p>
-                    <a href="/team" class="logout-btn">Administrar</a>
-                </div>
-            </div>
-        </section>
-        <?php endif; ?>
-    </div>
+        
 
     <footer>
         <div class="container">

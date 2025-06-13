@@ -87,8 +87,16 @@ while (1) {
                 chown($uid, $gid, "$home_dir/instrucciones.txt") if -e "$home_dir/instrucciones.txt";
             }
 
-            # Establecer cuota
-            system("setquota", "-u", $usuario, "100000", "150000", "0", "0", "-a", "/");
+            # Establecer cuota     
+            my $soft_limit_kb = 90 * 1024;
+            my $hard_limit_kb = 100 * 1024;
+            my $comando = "setquota -u $usuario $soft_limit_kb $hard_limit_kb 0 0 /";
+            my $salida = system($comando);
+            if ($salida != 0) {
+                warn "Error al establecer cuota para usuario $usuario con comando: $comando\n";
+            }
+    
+
         }
 
         # Vaciar la cola
